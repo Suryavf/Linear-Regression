@@ -99,6 +99,11 @@ df = dataTrain[ select_nu ]
 # Preprocessing
 df = (df-df.mean())/df.std()
 
+# Plot
+sns.pairplot(df, x_vars=select_nu[:-1], 
+                 y_vars=select_nu[ -1], 
+                 size=7, aspect=0.7, kind='reg')
+
 
 for i in range(len( select_nu) - 1):
     # Regression
