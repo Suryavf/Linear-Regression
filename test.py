@@ -161,10 +161,66 @@ for train, test in kf.split(x):
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
     
 print('Python implementation:')
-print(   'MAE=',np.average(MAE),
-       '\tMSE=',np.average(MSE),
-      '\tRMSE=',np.average(RMSE))
+print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
 print('\n')    
+
+
+"""
+Batch Gradient Descent
+----------------------
+"""
+def BatchGradientDescent(x_train,y_train,x_test):
+    
+    # Parameters
+    alpha     = 0.001
+    err       = 1000
+    errNorm   = 1000
+    threshold = 0.001
+    
+    n_predictor = len(x_train[0])
+    n_samples   = len(y_train   )
+    theta = np.zeros([n_predictor + 1,1])
+    
+    # Train Loop
+    while (errNorm>threshold):
+        exErr = err
+        err   = 0
+        
+        y_pred = np.dot(x_train,theta[:-1]) + theta[:][-1]
+        
+        J =  (1.0/n_samples)*  np.dot( x_train.T,  # Transposing
+                                       y_train - y_pred)
+        
+        for i in range( n_predictor ):
+            theta[i] = theta[i] + alpha *np.dot(x_train[:][i],J)  
+        
+        # Error
+        err = np.sum(np.abs(y_train - y_pred))
+        
+        # Update error
+        errNorm = np.abs(exErr - err)/np.abs(err)
+        
+    return np.dot(x_test,theta[:][:-1]) + theta[:][-1]
+##  ---------------------------------------------------------------------------    
+
+MAE = list(); MSE = list(); RMSE = list()
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Stochastic Gradient Descent
+    y_pred = BatchGradientDescent(x_train,y_train,x_test)
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Batch Gradient Descent:')
+print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('\n')    
+
 
 
 """
@@ -179,7 +235,7 @@ def StochasticGradientDescent(x_train,y_train,x_test):
     errNorm   = 1000
     threshold = 0.001
     
-    theta = np.zeros( len(x_train[0]) )
+    theta = np.zeros( len(x_train[0]) + 1 )
     
     # Train Loop
     while (errNorm>threshold):
@@ -187,20 +243,20 @@ def StochasticGradientDescent(x_train,y_train,x_test):
         exErr = err
         err   = 0
         for xs, ys in zip(x,y):
+            xs = np.append(xs,1)
             y_pred = theta * xs
             
-            #band   = alpha * (ys - y_pred)
-            #for i in range( len(theta) ):
-            #    theta[i]  = theta[i] + band[i] * xs[i]
-            
+            # Theta
             theta  = theta + alpha * (ys - y_pred) * xs
             
+            # Error
             err = err + np.sum(np.abs(ys - y_pred))
             
         # Update error
         errNorm = np.abs(exErr - err)/np.abs(err)
         
-    return np.dot(x_test,theta)
+    return np.dot(x_test,theta[:][:-1]) + theta[:][-1]
+##  ---------------------------------------------------------------------------    
 
 
 MAE = list(); MSE = list(); RMSE = list()
@@ -210,8 +266,7 @@ for train, test in kf.split(x):
     x_test  = x[test ]; y_test  = y[test ]
     
     # Stochastic Gradient Descent
-    y_pred = StochasticGradientDescent(x_train,y_train,
-                                       x_test)
+    y_pred = StochasticGradientDescent(x_train,y_train,x_test)
     
     # Metrics
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
@@ -219,9 +274,7 @@ for train, test in kf.split(x):
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
     
 print('Stochastic Gradient Descent:')
-print(   'MAE=',np.average(MAE),
-       '\tMSE=',np.average(MSE),
-      '\tRMSE=',np.average(RMSE))
+print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
 print('\n')    
 
 
