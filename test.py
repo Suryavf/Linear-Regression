@@ -129,30 +129,6 @@ df = (df-df.mean())/df.std()
 #                 y_vars=select_nu[ -1], 
 #                 size=7, aspect=0.7, kind='reg')
 
-"""
-for i in range(len( select_nu) - 1):
-    # Regression
-    regr = LinearRegression()
-    
-    # Select features
-    sdf = df[ [select_nu[i] , select_nu[-1]] ].dropna()
-    x = sdf[ sdf.columns[0] ].values.reshape(-1, 1)
-    y = sdf[ sdf.columns[1] ].values.reshape(-1, 1)
-    
-    # Train
-    regr.fit(x,y)
-    
-    # Test
-    stf = dataTest[ [select_nu[i] , select_nu[-1]] ].dropna()
-    x_test = stf[ stf.columns[0] ].values.reshape(-1, 1)
-    y_real = stf[ stf.columns[1] ].values.reshape(-1, 1)
-
-    y_pred = regr.predict( x_test )
-    
-    print( np.sqrt(metrics.mean_squared_error(y_real, y_pred)) )
-"""
-
-
 # Cross-validation
 sdf = df.dropna()
 x = sdf[ select_nu[:-1] ].values
@@ -160,6 +136,10 @@ y = sdf[ select_nu[ -1] ].values.reshape(-1, 1)
 kf = KFold(n_splits=8)
 
 
+"""
+Python implementation
+---------------------
+"""
 MAE = list(); MSE = list(); RMSE = list()
 for train, test in kf.split(x):
     # Select
@@ -180,39 +160,69 @@ for train, test in kf.split(x):
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
     
-
+print('Python implementation:')
 print(   'MAE=',np.average(MAE),
        '\tMSE=',np.average(MSE),
       '\tRMSE=',np.average(RMSE))
+print('\n')    
+
+
+"""
+Stochastic Gradient Descent
+---------------------------
+"""
+def StochasticGradientDescent(x_train,y_train,x_test):
     
+    # Parameters
+    alpha     = 0.001
+    err       = 1000
+    errNorm   = 1000
+    threshold = 0.001
+    
+    theta = np.zeros( len(x_train[0]) )
+    
+    # Train Loop
+    while (errNorm>threshold):
+        
+        exErr = err
+        err   = 0
+        for xs, ys in zip(x,y):
+            y_pred = theta * xs
+            
+            #band   = alpha * (ys - y_pred)
+            #for i in range( len(theta) ):
+            #    theta[i]  = theta[i] + band[i] * xs[i]
+            
+            theta  = theta + alpha * (ys - y_pred) * xs
+            
+            err = err + np.sum(np.abs(ys - y_pred))
+            
+        # Update error
+        errNorm = np.abs(exErr - err)/np.abs(err)
+        
+    return np.dot(x_test,theta)
 
-"""
-x_train, x_test, y_train, y_test = train_test_split(x, y, random_state=1)
 
-# Regression
-regr = LinearRegression()
+MAE = list(); MSE = list(); RMSE = list()
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Stochastic Gradient Descent
+    y_pred = StochasticGradientDescent(x_train,y_train,
+                                       x_test)
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Stochastic Gradient Descent:')
+print(   'MAE=',np.average(MAE),
+       '\tMSE=',np.average(MSE),
+      '\tRMSE=',np.average(RMSE))
+print('\n')    
 
-sdf = df.dropna()
-x = sdf[ select_nu[:-1] ].values
-y = sdf[ select_nu[ -1] ].values.reshape(-1, 1)
 
-
-# Train
-regr.fit(x,y)
-
-# Test
-stf = dataTest[ select_nu ].dropna()
-stf = (stf-stf.mean())/stf.std()
-
-x_test = stf[ select_nu[:-1] ].values
-y_real = stf[ select_nu[ -1]].values.reshape(-1, 1)
-
-y_pred = regr.predict( x_test )
-
-# Metrics
-MAE  = metrics.mean_absolute_error(y_real, y_pred)
-MSE  = metrics.mean_squared_error(y_real, y_pred);
-RMSE = np.sqrt(metrics.mean_squared_error(y_real, y_pred))
-print('MAE',MAE,'\tMSE=',MSE,'\tRMSE=',RMSE)
-"""
 
