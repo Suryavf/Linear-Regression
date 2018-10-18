@@ -7,14 +7,11 @@ Este es un archivo temporal.
 
 import pandas as pd 
 import numpy  as np 
-import scipy  as sc
-import seaborn as sns
-from scipy import stats
 from sklearn import metrics
 from sklearn.linear_model import LinearRegression
+from sklearn import linear_model
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
 
@@ -68,30 +65,36 @@ Categorical to Numerical
 ------------------------
 """
 
-# Ordinal
+## Ordinal
 for cat in catOrdinal:
     
-    ## Add to data train
+    # Add to data train
     dummy =pd.get_dummies(dataTrain[cat],prefix=cat)
     dataTrain = pd.concat([dataTrain, dummy], axis=1, join_axes=[dataTrain.index])
     
-    ## Add to data test
+    # Add to data test
     dummy =pd.get_dummies(dataTest[cat],prefix=cat)
     dataTest = pd.concat([dataTest, dummy], axis=1, join_axes=[dataTest.index])
     
-    ## Add to nu
+    # Add to nu
     nu.extend(dummy.columns.tolist())
     
-# Nominal
+## Nominal
 for cat in catNominal.keys():
     
+    # Get domains
     dom = catNominal[cat]
     
-    ## Add to data train
-    carNum = [dom.index(x) for x in dataTrain[cat].fillna('NA')  ]
+    # Add to data train
+    catNum = [dom.index(x) for x in dataTrain[cat].fillna('NA')  ]
+    dataTrain[cat+'_Num'] = pd.Series(catNum, index=dataTrain.index)
     
+    # Add to data test
+    catNum = [dom.index(x) for x in dataTest[cat].fillna('NA')  ]
+    dataTest[cat+'_Num'] = pd.Series(catNum, index=dataTest.index)
     
-    
+    # Add to nu
+    nu.append(cat+'_Num')
 
 """
 Data selection
@@ -125,11 +128,20 @@ df = (df-df.mean())/df.std()
 #                 size=7, aspect=0.7, kind='reg')
 
 # Cross-validation
-sdf = df.dropna()
-x = sdf[ select_nu[:-1] ].values
-y = sdf[ select_nu[ -1] ].values.reshape(-1, 1)
+x = df[ select_nu[:-1] ].values
+y = df[ select_nu[ -1] ].values.reshape(-1, 1)
 kf = KFold(n_splits=8)
 
+"""
+from matplotlib.pyplot import plot
+from sklearn.decomposition import PCA
+pca = PCA(copy=True, iterated_power='auto', n_components=20, random_state=None,
+          svd_solver='full', tol=0.0, whiten=True)
+
+x = pca.fit_transform(x)
+x = x[:,:10]
+plot(pca.singular_values_/max(pca.singular_values_))
+"""
 
 """
 Python implementation
@@ -216,8 +228,6 @@ print('Batch Gradient Descent:')
 print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
 print('\n')    
 
-
-
 """
 Stochastic Gradient Descent
 ---------------------------
@@ -276,7 +286,7 @@ print('\n')
 
 """
 Random Forest Regressor
----------------------------
+-----------------------
 """
 
 MAE = list(); MSE = list(); RMSE = list()
@@ -334,6 +344,260 @@ print('Gradient Boosting Regressor:')
 print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
 print('\n')
 
+
+
+"""
+LASSO Regression
+----------------
+"""
+MAE = list(); MSE = list(); RMSE = list()
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = linear_model.Lasso(alpha=0.0001)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('LASSO Regression:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+PLS Regression
+----------------
+"""
+from sklearn.cross_decomposition import PLSRegression
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = PLSRegression(n_components=5)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('PLS Regression:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+Gaussian process regression 
+---------------------------
+"""
+from sklearn.gaussian_process import GaussianProcessRegressor
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = GaussianProcessRegressor(random_state=0)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Gaussian process regression :')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+Huber Regressor
+---------------
+"""
+from sklearn.linear_model import HuberRegressor
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = HuberRegressor()
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Huber Regressor:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+RANSAC Regressor
+----------------
+"""
+from sklearn.linear_model import RANSACRegressor
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = RANSACRegressor(random_state=0)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('RANSAC Regressor:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+Linear Support Vector Regression
+--------------------------------
+"""
+from sklearn.svm import LinearSVR
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = LinearSVR(random_state=0, tol=1e-8)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Linear Support Vector Regression:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+
+"""
+Nu Support Vector Regression
+--------------------------------
+"""
+from sklearn.svm import NuSVR
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = NuSVR(tol=1e-6)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Nu Support Vector Regression:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
+"""
+Epsilon-Support Vector Regression
+---------------------------------
+"""
+from sklearn.svm import SVR
+MAE = list(); MSE = list(); RMSE = list()
+
+for train, test in kf.split(x):
+    # Select
+    x_train = x[train]; y_train = y[train]
+    x_test  = x[test ]; y_test  = y[test ]
+    
+    # Regression
+    regr = SVR(tol=1e-6)
+    
+    # Train
+    regr.fit(x,y)
+    
+    # Test
+    y_pred = regr.predict( x_test )
+    
+    # Metrics
+    MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
+    MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
+    RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    
+print('Epsilon-Support Vector Regression:')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
+print('\n')
+
+
 """
 Data test result
 ----------------
@@ -343,13 +607,22 @@ select_nu.append('Id')
 
 dt = dataTest[ select_nu ].fillna(0)
 index = dt[ 'Id' ].values
-dt.drop(['Id'], axis=1)
+dt = dt.drop(['Id'], axis=1)
 
 
 # Preprocessing
 dt = (dt-dt.mean())/dt.std()
 
 x_test = dt.values
+
+"""
+pca = PCA(copy=True, iterated_power='auto', n_components=20, random_state=None,
+          svd_solver='full', tol=0.0, whiten=True)
+
+x_test = pca.fit_transform(x_test)
+x_test = x_test[:,:10]
+"""
+
 
 # Regression
 regr = RandomForestRegressor(random_state=0,n_estimators=100)
@@ -361,4 +634,4 @@ y_test = y_test*ystd+ymean
 # Out
 test = {'Id': index, 'SalePrice': y_test}
 test = pd.DataFrame(data=test)
-test.to_csv('sample_submission.csv', sep='\t', encoding='utf-8')
+test.to_csv('sample_submission.csv',index=False)
