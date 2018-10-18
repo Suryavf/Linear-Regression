@@ -21,6 +21,10 @@ print(chr(27) + "[2J")
 dataTrain = pd.read_csv("train.csv")
 dataTest  = pd.read_csv( "test.csv")
 
+# Nan to zero
+dataTrain.fillna(0);
+dataTest .fillna(0);
+
 # Name of columns
 tr = ['SalePrice']
 
@@ -109,12 +113,12 @@ spearman = spearman[tr]
 
 
 # Data selection
-umb = 0.5
+umb = 0.3
 select_pearson  = pearson [ pearson > umb].dropna().abs().sort_values(tr).index.tolist()
 select_spearman = spearman[spearman > umb].dropna().abs().sort_values(tr).index.tolist()
 select_nu = [x for x in select_spearman if x in select_pearson]
 
-df = dataTrain[ select_nu ]
+df = dataTrain[ select_nu ].fillna(0);
 
 # Preprocessing
 ymean = df['SalePrice'].mean()
@@ -625,7 +629,7 @@ x_test = x_test[:,:10]
 
 
 # Regression
-regr = RandomForestRegressor(random_state=0,n_estimators=100)
+regr = GradientBoostingRegressor(random_state=0,n_estimators=100)   # RandomForestRegressor GradientBoostingRegressor
 regr.fit(x,y)
 y_test = regr.predict( x_test )
 
