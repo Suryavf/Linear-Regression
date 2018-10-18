@@ -21,10 +21,8 @@ from sklearn.model_selection import KFold
 print(chr(27) + "[2J")
 
 # Import train/test
-dataTrain = pd.read_csv(            "train.csv")
-dataTest  = pd.read_csv(             "test.csv")
-dataTTest = pd.read_csv("sample_submission.csv")
-dataTest  = pd.concat([ dataTest, dataTTest ],axis = 1)
+dataTrain = pd.read_csv("train.csv")
+dataTest  = pd.read_csv( "test.csv")
 
 # Name of columns
 tr = ['SalePrice']
@@ -116,7 +114,10 @@ select_nu = [x for x in select_spearman if x in select_pearson]
 df = dataTrain[ select_nu ]
 
 # Preprocessing
+ymean = df['SalePrice'].mean()
+ystd  = df['SalePrice'].std ()
 df = (df-df.mean())/df.std()
+
 
 # Plot
 #sns.pairplot(df, x_vars=select_nu[:-1], 
@@ -288,7 +289,7 @@ for train, test in kf.split(x):
     regr = RandomForestRegressor(random_state=0,n_estimators=100)
     
     # Train
-    regr.fit(x,y)
+    regr.fit(x_train,y_train)
     
     # Test
     y_pred = regr.predict( x_test )
@@ -319,7 +320,7 @@ for train, test in kf.split(x):
     regr = GradientBoostingRegressor(random_state=0,n_estimators=100)
     
     # Train
-    regr.fit(x,y)
+    regr.fit(x_train,y_train)
     
     # Test
     y_pred = regr.predict( x_test )
@@ -333,3 +334,31 @@ print('Gradient Boosting Regressor:')
 print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
 print('\n')
 
+"""
+Data test result
+----------------
+"""
+select_nu.pop()
+select_nu.append('Id')
+
+dt = dataTest[ select_nu ].fillna(0)
+index = dt[ 'Id' ].values
+dt.drop(['Id'], axis=1)
+
+
+# Preprocessing
+dt = (dt-dt.mean())/dt.std()
+
+x_test = dt.values
+
+# Regression
+regr = RandomForestRegressor(random_state=0,n_estimators=100)
+regr.fit(x,y)
+y_test = regr.predict( x_test )
+
+y_test = y_test*ystd+ymean
+
+# Out
+test = {'Id': index, 'SalePrice': y_test}
+test = pd.DataFrame(data=test)
+test.to_csv('sample_submission.csv', sep='\t', encoding='utf-8')
