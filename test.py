@@ -115,7 +115,7 @@ spearman = spearman[tr]
 
 
 # Data selection
-umb = 0.1
+umb = 0.05
 select_pearson  = pearson [ pearson > umb].dropna().abs().sort_values(tr).index.tolist()
 select_spearman = spearman[spearman > umb].dropna().abs().sort_values(tr).index.tolist()
 select_nu = [x for x in select_spearman if x in select_pearson]
