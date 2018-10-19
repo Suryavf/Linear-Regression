@@ -14,6 +14,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold
 
+import warnings
+warnings.filterwarnings("ignore")
 
 print(chr(27) + "[2J")
 
@@ -113,7 +115,7 @@ spearman = spearman[tr]
 
 
 # Data selection
-umb = 0.3
+umb = 0.1
 select_pearson  = pearson [ pearson > umb].dropna().abs().sort_values(tr).index.tolist()
 select_spearman = spearman[spearman > umb].dropna().abs().sort_values(tr).index.tolist()
 select_nu = [x for x in select_spearman if x in select_pearson]
@@ -136,22 +138,35 @@ x = df[ select_nu[:-1] ].values
 y = df[ select_nu[ -1] ].values.reshape(-1, 1)
 kf = KFold(n_splits=8)
 
-"""
-from matplotlib.pyplot import plot
-from sklearn.decomposition import PCA
-pca = PCA(copy=True, iterated_power='auto', n_components=20, random_state=None,
-          svd_solver='full', tol=0.0, whiten=True)
+def aic(y, y_pred, p):
+#   y: array-like of shape = (n_samples) including values of observed y
+#   y_pred: vector including values of predicted y
+#   p: int number of predictive variable(s) used in the model
+    
+    # Calculation
+    resid = np.subtract(y_pred, y)
+    rss = np.sum(np.power(resid, 2))
+    aic_score = len(y)*np.log(rss/len(y)) + 2*p
 
-x = pca.fit_transform(x)
-x = x[:,:10]
-plot(pca.singular_values_/max(pca.singular_values_))
-"""
+    return aic_score
+
+
+def bic(y, y_pred, p):
+#   y: array-like of shape = (n_samples) including values of observed y
+#   y_pred: vector including values of predicted y
+#   p: int number of predictive variable(s) used in the model
+    residual = np.subtract(y_pred, y)
+    SSE = np.sum(np.power(residual, 2))
+    BIC = len(y)*np.log(SSE/len(y)) + p*np.log(len(y))
+    
+    return BIC
+    
 
 """
 Python implementation
 ---------------------
 """
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -170,9 +185,15 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Python implementation:')
-print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
 print('\n')    
 
 
@@ -214,7 +235,7 @@ def BatchGradientDescent(x_train,y_train,x_test):
     return np.dot(x_test,theta[:][:-1]) + theta[:][-1]
 ##  ---------------------------------------------------------------------------    
 
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -227,9 +248,15 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Batch Gradient Descent:')
-print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
 print('\n')    
 
 """
@@ -268,7 +295,7 @@ def StochasticGradientDescent(x_train,y_train,x_test):
 ##  ---------------------------------------------------------------------------    
 
 
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -281,9 +308,15 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Stochastic Gradient Descent:')
-print('MAE=',np.average(MAE),'\tMSE=',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
 print('\n')    
 
 
@@ -293,7 +326,7 @@ Random Forest Regressor
 -----------------------
 """
 
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -312,10 +345,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Random Forest Regressor:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -323,8 +362,7 @@ print('\n')
 Gradient Boosting Regressor
 ---------------------------
 """
-
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -343,10 +381,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Gradient Boosting Regressor:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -354,7 +398,7 @@ print('\n')
 LASSO Regression
 ----------------
 """
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 for train, test in kf.split(x):
     # Select
     x_train = x[train]; y_train = y[train]
@@ -373,19 +417,25 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('LASSO Regression:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
 """
 PLS Regression
-----------------
+--------------
 """
 from sklearn.cross_decomposition import PLSRegression
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -405,10 +455,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('PLS Regression:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -417,7 +473,7 @@ Gaussian process regression
 ---------------------------
 """
 from sklearn.gaussian_process import GaussianProcessRegressor
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -437,10 +493,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Gaussian process regression :')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -449,7 +511,7 @@ Huber Regressor
 ---------------
 """
 from sklearn.linear_model import HuberRegressor
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -469,10 +531,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Huber Regressor:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -481,7 +549,7 @@ RANSAC Regressor
 ----------------
 """
 from sklearn.linear_model import RANSACRegressor
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -501,10 +569,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('RANSAC Regressor:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -513,7 +587,7 @@ Linear Support Vector Regression
 --------------------------------
 """
 from sklearn.svm import LinearSVR
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -533,10 +607,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Linear Support Vector Regression:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 
@@ -545,7 +625,7 @@ Nu Support Vector Regression
 --------------------------------
 """
 from sklearn.svm import NuSVR
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -565,10 +645,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Nu Support Vector Regression:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 """
@@ -576,7 +662,7 @@ Epsilon-Support Vector Regression
 ---------------------------------
 """
 from sklearn.svm import SVR
-MAE = list(); MSE = list(); RMSE = list()
+MAE = list(); MSE = list(); RMSE = list(); R2 = list(); AIC = list(); BIC = list()
 
 for train, test in kf.split(x):
     # Select
@@ -596,10 +682,16 @@ for train, test in kf.split(x):
     MAE .append(        metrics.mean_absolute_error(y_test, y_pred) )
     MSE .append(        metrics.mean_squared_error (y_test, y_pred) )
     RMSE.append(np.sqrt(metrics.mean_squared_error (y_test, y_pred)))
+    R2  .append(        metrics.r2_score           (y_test, y_pred) )
+    
+    AIC.append( aic(y_test,y_pred,len(select_nu)-1) )
+    BIC.append( bic(y_test,y_pred,len(select_nu)-1) )
+    
     
 print('Epsilon-Support Vector Regression:')
-print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE =',np.average(RMSE))
-print('\n')
+print('MAE =',np.average(MAE),'\tMSE =',np.average(MSE),'\tRMSE=',np.average(RMSE))
+print('R2 =',np.average(R2),'AIC =',np.average(AIC),'\tBIC =',np.average(BIC))
+print('\n')    
 
 
 """
